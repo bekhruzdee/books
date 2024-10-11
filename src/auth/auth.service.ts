@@ -18,6 +18,7 @@ export class AuthService {
     user.username = createAuthDto.username;
     user.password = await bcrypt.hash(createAuthDto.password, 10);
     user.fullname = createAuthDto.fullname;
+    user.email = createAuthDto.email;
     await this.userRepository.save(user);
 
     return 'You are registered✅';

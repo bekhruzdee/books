@@ -11,5 +11,9 @@ export class CreateAuthDto {
 
   @IsNotEmpty()
   @IsString()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
   password: string;
 }

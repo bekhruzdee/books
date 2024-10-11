@@ -1,34 +1,126 @@
-import {  Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
+import { User } from './entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto'; // Foydalanuvchini yaratish DTO
+import { UpdateUserDto } from './dto/update-user.dto'; // Foydalanuvchini yangilash DTO
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(User) private readonly userRepository: Repository<User>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
-  public arr = [];
-  create(createUserDto: CreateUserDto) {
-    this.arr.push(createUserDto);
-    return 'This action adds a new user';
+
+  // Yangi foydalanuvchini yaratish
+  async create(
+    createUserDto: CreateUserDto,
+  ): Promise<{ success: boolean; message: string; data?: User }> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { email: createUserDto.email },
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        message: 'User already exists',
+      };
+    }
+
+    const newUser = this.usersRepository.create(createUserDto);
+    const savedUser = await this.usersRepository.save(newUser);
+
+    return {
+      success: true,
+      message: 'User created successfully',
+      data: savedUser,
+    };
   }
 
-  findAll() {
-    return this.userRepository.find();
+  // Barcha foydalanuvchilarni olish
+  async findAll(): Promise<{
+    success: boolean;
+    message: string;
+    data: User[];
+  }> {
+    const users = await this.usersRepository.find();
+    return {
+      success: true,
+      message: 'Users data retrieved successfully',
+      data: users,
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  // Foydalanuvchini ID orqali olish
+  async findOne(id: number): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return user;
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  // Foydalanuvchini yangilash
+  async update(
+    userId: number,
+    updateUserDto: UpdateUserDto,
+  ): Promise<{ success: boolean; message: string; data?: User }> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      return {
+        success: false,
+        message: 'User not found',
+      };
+    }
+
+    await this.usersRepository.update(userId, updateUserDto);
+    const updatedUser = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+
+    return {
+      success: true,
+      message: 'User updated successfully',
+      data: updatedUser,
+    };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  // Foydalanuvchini o'chirish
+  async remove(userId: number): Promise<{ success: boolean; message: string }> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      return {
+        success: false,
+        message: 'User not found',
+      };
+    }
+
+    await this.usersRepository.delete(userId);
+
+    return {
+      success: true,
+      message: 'User deleted successfully',
+    };
+  }
+
+  // Foydalanuvchini yaratish yoki yangilash
+  async createOrUpdate(profile: any): Promise<User> {
+    const { username, emails } = profile;
+    const email = emails[0].value;
+
+    let user = await this.usersRepository.findOne({ where: { email } });
+
+    if (!user) {
+      user = this.usersRepository.create({ username, email });
+      await this.usersRepository.save(user);
+    }
+
+    return user;
   }
 }
